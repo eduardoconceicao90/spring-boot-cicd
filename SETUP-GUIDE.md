@@ -301,30 +301,84 @@ http://localhost:9090 → digite `tasks_created_total` → **Execute** → aba *
 
 ---
 
-## 10. Webhook Automático (Opcional)
+## 10. Webhook Automático com ngrok
 
-Para build automático a cada `git push`:
+Para build automático a cada `git push`, o GitHub precisa conseguir chamar o Jenkins. Como o Jenkins roda localmente, usamos o **ngrok** para criar um túnel público.
 
-### Jenkins acessível pela internet
+### 10.1. O que é ngrok
 
-Use **ngrok** (teste local):
+ngrok cria uma URL pública (ex: `https://abc123.ngrok-free.app`) que redireciona para o seu `localhost`. O GitHub envia o webhook para essa URL e o ngrok repassa ao Jenkins.
+
+```
+GitHub → https://abc123.ngrok-free.app/github-webhook/ → localhost:8081
+```
+
+### 10.2. Instalar e configurar ngrok
+
+1. Crie conta gratuita em **https://ngrok.com**
+2. Baixe e instale o ngrok
+3. Autentique com seu token:
+```bash
+ngrok config add-authtoken SEU_TOKEN
+```
+
+### 10.3. Iniciar o túnel
+
+**Sempre aponte para a porta 8081** (porta do Jenkins):
 ```bash
 ngrok http 8081
 ```
 
-### Webhook no GitHub
+Você verá algo como:
+```
+Forwarding  https://2c06-xxxx.ngrok-free.app -> http://localhost:8081
+```
 
-**Settings → Webhooks → Add webhook**:
+> **Atenção:** No plano gratuito, a URL muda toda vez que o ngrok é reiniciado. Sempre atualize o webhook no GitHub quando isso acontecer.
+
+### 10.4. Configurar webhook no GitHub
+
+**Repositório → Settings → Webhooks → Add webhook**:
 
 | Campo | Valor |
 |-------|-------|
 | Payload URL | `https://SUA_URL_NGROK/github-webhook/` |
 | Content type | `application/json` |
+| Secret | (deixe em branco) |
 | Events | `Just the push event` |
 
-### Trigger no Jenkins
+> **Atenção à URL:** deve terminar exatamente com `/github-webhook/` (com barra no final).
 
-Configuração do job → **Build Triggers** → marque **GitHub hook trigger for GITScm polling** → **Save**
+Clique **Add webhook** — o GitHub enviará um ping de teste (ícone verde = sucesso).
+
+### 10.5. Configurar trigger no Jenkins
+
+1. Dashboard → job **spring-boot-cicd** → **Configure**
+2. Seção **Build Triggers**
+3. Marque **"GitHub hook trigger for GITScm polling"**
+4. Clique **Save**
+
+### 10.6. Testar
+
+Faça um push qualquer:
+```bash
+git commit --allow-empty -m "test: disparar pipeline"
+git push
+```
+
+No **ngrok**, deve aparecer:
+```
+POST /github-webhook/   200 OK
+```
+
+No **Jenkins**, um novo build inicia automaticamente em segundos.
+
+### 10.7. Atualizar a URL quando o ngrok reiniciar
+
+1. Reinicie o ngrok: `ngrok http 8081`
+2. Copie a nova URL
+3. GitHub → Settings → Webhooks → edite → atualize a Payload URL → **Update webhook**
+4. Clique **Redeliver** para reenviar o último evento sem precisar fazer novo push
 
 ---
 
