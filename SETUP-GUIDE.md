@@ -4,6 +4,77 @@ Passo a passo para configurar GitHub, Jenkins e executar tudo.
 
 ---
 
+## O que é Jenkins?
+
+**Jenkins** é uma ferramenta de automação open source usada para implementar **CI/CD** (Integração Contínua / Entrega Contínua).
+
+Na prática, ele observa o repositório Git e, a cada mudança de código, executa automaticamente um conjunto de tarefas chamado **pipeline**:
+
+```
+Código enviado → Jenkins detecta → compila → testa → gera imagem Docker → faz deploy
+```
+
+Sem Jenkins, esse processo seria manual: você teria que compilar, rodar os testes, buildar e subir o container na mão toda vez que alterasse o código.
+
+**Neste projeto**, o Jenkins roda dentro de um container Docker e executa o `Jenkinsfile` que está na raiz do repositório.
+
+---
+
+## O que é ngrok?
+
+**ngrok** é uma ferramenta que cria um **túnel seguro** entre a internet e a sua máquina local.
+
+O problema sem ngrok:
+- Jenkins roda em `http://localhost:8081` — acessível **só na sua máquina**
+- O GitHub precisa enviar um aviso (webhook) ao Jenkins quando você fizer um push
+- O GitHub está na internet e **não consegue acessar seu localhost**
+
+O ngrok resolve isso criando uma URL pública que redireciona para o seu localhost:
+
+```
+GitHub (internet)
+    │
+    │  POST /github-webhook/
+    ▼
+https://abc123.ngrok-free.app   ← URL pública criada pelo ngrok
+    │
+    │  repassa a requisição
+    ▼
+http://localhost:8081            ← seu Jenkins local
+```
+
+---
+
+## Como Jenkins e ngrok se relacionam?
+
+O fluxo completo de automação funciona assim:
+
+```
+1. Você faz git push
+        │
+        ▼
+2. GitHub envia webhook para a URL do ngrok
+        │
+        ▼
+3. ngrok repassa a requisição para o Jenkins local (localhost:8081)
+        │
+        ▼
+4. Jenkins inicia o pipeline automaticamente
+        │
+        ▼
+5. Pipeline: compila → testa → build Docker → deploy
+        │
+        ▼
+6. Aplicação atualizada rodando em localhost:8080
+```
+
+**Sem ngrok:** você precisa entrar no Jenkins e clicar em "Build Now" manualmente a cada push.  
+**Com ngrok:** o push já dispara o pipeline sozinho.
+
+> **Importante:** ngrok é uma solução para **desenvolvimento local**. Em produção, o Jenkins ficaria hospedado em um servidor com IP público e não precisaria do ngrok.
+
+---
+
 ## Índice
 
 1. [Pré-Requisitos](#1-pré-requisitos)
