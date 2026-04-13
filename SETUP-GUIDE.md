@@ -75,6 +75,62 @@ O fluxo completo de automação funciona assim:
 
 ---
 
+## Dockerfile vs Jenkinsfile — qual a diferença?
+
+São dois arquivos completamente diferentes, com papéis distintos:
+
+### `jenkins/Dockerfile` — define o ambiente do Jenkins
+
+Este arquivo instrui o Docker a **construir a imagem do próprio Jenkins**, ou seja, prepara o servidor de CI/CD antes de qualquer pipeline rodar.
+
+Ele instala tudo que o Jenkins precisa para funcionar neste projeto:
+- **Docker CLI** — para que o Jenkins consiga rodar comandos `docker build` e `docker run`
+- **Maven 3.9** — para compilar o projeto Java
+- **Plugins do Jenkins** — extensões que adicionam funcionalidades (Git, Pipeline, JaCoCo, etc.)
+
+```
+jenkins/Dockerfile
+    │
+    └── É executado UMA VEZ quando você roda: docker compose up --build
+        Resultado: imagem Docker do Jenkins pronta para uso
+```
+
+### `Jenkinsfile` — define o que o Jenkins faz com o código
+
+Este arquivo fica na **raiz do projeto** e instrui o Jenkins a **executar o pipeline** a cada build. É o roteiro das etapas de CI/CD:
+
+```groovy
+pipeline {
+    stages {
+        stage('Checkout')     → baixa o código do GitHub
+        stage('Build & Test') → mvn clean package (compila e testa)
+        stage('Docker Build') → docker build da aplicação Spring Boot
+        stage('Deploy')       → docker run (sobe o container da app)
+    }
+}
+```
+
+```
+Jenkinsfile
+    │
+    └── É executado TODA VEZ que um build é disparado (push ou manual)
+        Resultado: aplicação compilada, testada e deployada
+```
+
+### Resumo comparativo
+
+| | `jenkins/Dockerfile` | `Jenkinsfile` |
+|---|---|---|
+| **O que configura** | O servidor Jenkins | O pipeline de CI/CD |
+| **Quando é executado** | Na criação do container (`docker compose up --build`) | A cada build (push ou manual) |
+| **Escrito em** | Sintaxe Dockerfile | Groovy (DSL do Jenkins) |
+| **Fica em** | `jenkins/Dockerfile` | Raiz do projeto `Jenkinsfile` |
+| **Resultado** | Jenkins pronto com Maven e Docker | App compilada, testada e deployada |
+
+> **Analogia:** O `jenkins/Dockerfile` é a **construção da fábrica** (instala as máquinas). O `Jenkinsfile` é a **linha de produção** (o que a fábrica fabrica).
+
+---
+
 ## Índice
 
 1. [Pré-Requisitos](#1-pré-requisitos)
